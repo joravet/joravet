@@ -43,5 +43,5 @@ Short description.
 
 ## 🌐 Connect with Me
 - Portfolio: [(https://github.com/joravet)](https://github.com/joravet) 
-- LinkedIn: [[Your LinkedIn](https://linkedin.com/in/yourlinkedin)](https://www.linkedin.com/in/jackson-oravetz-628003268/)  
+- LinkedIn: [(https://linkedin.com/in/yourlinkedin)](https://www.linkedin.com/in/jackson-oravetz-628003268/)  
 - Email: joravet@rockets.utoledo.edu
