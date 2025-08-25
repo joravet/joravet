@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Projects • joravet</title>
+  <style>
+    /* Simple, clean styles */
+    :root { --max: 1100px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:0; }
+    header { padding: 2rem 1rem; max-width: var(--max); margin: 0 auto; }
+    h1 { margin: 0 0 .5rem; font-size: 2rem; }
+    p.lead { margin: 0; opacity: .8; }
+    .controls { max-width: var(--max); margin: 1rem auto; padding: 0 1rem; display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;}
+    input[type="search"] { flex: 1; padding: .6rem .8rem; border: 1px solid #ddd; border-radius: .6rem; }
+    select { padding: .55rem .8rem; border: 1px solid #ddd; border-radius: .6rem; background: white; }
+    main { max-width: var(--max); margin: 1rem auto 3rem; padding: 0 1rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 1rem; }
+    .card { border: 1px solid #eee; border-radius: 1rem; padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+    .card h3 { margin: 0; font-size: 1.05rem; }
+    .meta { font-size: .9rem; opacity: .8; display:flex; gap:.75rem; flex-wrap:wrap; }
+    .tags { display:flex; gap:.4rem; flex-wrap:wrap; }
+    .tag { font-size: .75rem; border: 1px solid #ddd; padding: .15rem .4rem; border-radius: .5rem; }
+    .links { margin-top: auto; display:flex; gap:.6rem; flex-wrap:wrap; }
+    .btn { display:inline-block; padding:.5rem .7rem; border:1px solid #ddd; border-radius:.6rem; text-decoration:none; }
+    footer { max-width: var(--max); margin: 3rem auto; padding: 0 1rem 2rem; opacity:.7; font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Projects by joravet</h1>
+    <p class="lead">A living gallery of my GitHub repositories. Updated automatically.</p>
+  </header>
+
+  <div class="controls">
+    <input id="search" type="search" placeholder="Filter by name, description, or language…" />
+    <select id="sort">
+      <option value="updated">Sort: Recently updated</option>
+      <option value="stars">Sort: Most stars</option>
+      <option value="name">Sort: Name (A→Z)</option>
+    </select>
+    <select id="visibility">
+      <option value="all">Show: All public</option>
+      <option value="portfolio">Show: Topic ‘portfolio’ only</option>
+    </select>
+  </div>
+
+  <main>
+    <div id="grid" class="grid" aria-live="polite"></div>
+  </main>
+
+  <footer>
+    Built with GitHub Pages + GitHub API. No backend needed.
+  </footer>
+
+  <script>
+    const USER = "joravet";          // ← change this
+    const ONLY_TOPIC = "portfolio";               // ← change topic to curate subset, or keep as 'portfolio'
+    const grid = document.getElementById("grid");
+    const search = document.getElementById("search");
+    const sortSel = document.getElementById("sort");
+    const visibilitySel = document.getElementById("visibility");
+
+    let allRepos = [];
+    let filtered = [];
+
+    async function fetchRepos(page = 1, acc = []) {
+      // Pull up to 100 repos per page; most users fit in one page
+      const res = await fetch(`https://api.github.com/users/${USER}/repos?per_page=100&page=${page}&sort=updated`, {
+        headers: { "Accept": "application/vnd.github+json" }
+      });
+      if (!res.ok) throw new Error("GitHub API rate limited or username not found");
+      const data = await res.json();
+      acc.push(...data);
+      if (data.length === 100) return fetchRepos(page + 1, acc);
+      return acc;
+    }
+
+    function render(list) {
+      grid.innerHTML = "";
+      if (!list.length) {
+        grid.innerHTML = `<p>No repositories match your filters.</p>`;
+        return;
+      }
+      for (const r of list) {
+        const homepage = r.homepage && r.homepage.trim() ? r.homepage : null;
+        const updated = new Date(r.pushed_at).toLocaleDateString();
+        const lang = r.language || "—";
+        const topics = (r.topics || []).map(t => `<span class="tag">${t}</span>`).join("");
+        const desc = r.description ? r.description : "";
+
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <h3>${r.name}</h3>
+          <div class="meta">
+            <span>${lang}</span>
+            <span>★ ${r.stargazers_count}</span>
+            <span>Updated ${updated}</span>
+          </div>
+          <p>${desc}</p>
+          <div class="tags">${topics}</div>
+          <div class="links">
+            <a class="btn" href="${r.html_url}" target="_blank" rel="noreferrer">View Code</a>
+            ${homepage ? `<a class="btn" href="${homepage}" target="_blank" rel="noreferrer">Live Demo</a>` : ""}
+          </div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    function applyFilters() {
+      const q = search.value.toLowerCase().trim();
+      const mode = visibilitySel.value;
+      filtered = allRepos
+        .filter(r => !r.fork && !r.archived) // hide forks/archived by default
+        .filter(r => {
+          if (mode === "portfolio") {
+            return (r.topics || []).includes(ONLY_TOPIC);
+          }
+          return true;
+        })
+        .filter(r =>
+          (r.name && r.name.toLowerCase().includes(q)) ||
+          (r.description && r.description.toLowerCase().includes(q)) ||
+          (r.language && r.language.toLowerCase().includes(q))
+        );
+
+      // sort
+      const how = sortSel.value;
+      if (how === "stars") filtered.sort((a,b) => b.stargazers_count - a.stargazers_count);
+      else if (how === "name") filtered.sort((a,b) => a.name.localeCompare(b.name));
+      else filtered.sort((a,b) => new Date(b.pushed_at) - new Date(a.pushed_at));
+
+      render(filtered);
+    }
+
+    async function init() {
+      try {
+        const repos = await fetchRepos();
+        // Ask for topics (some API responses already include topics; this ensures they exist)
+        // Note: This adds extra calls; skip if you don't need topic filtering.
+        const withTopics = await Promise.all(repos.map(async r => {
+          try {
+            const res = await fetch(`https://api.github.com/repos/${USER}/${r.name}/topics`, {
+              headers: { "Accept": "application/vnd.github.mercy-preview+json" }
+            });
+            if (res.ok) r.topics = (await res.json()).names || [];
+          } catch {}
+          return r;
+        }));
+        allRepos = withTopics;
+        applyFilters();
+      } catch (e) {
+        grid.innerHTML = `<p>Oops: ${e.message}</p>`;
+      }
+    }
+
+    search.addEventListener("input", applyFilters);
+    sortSel.addEventListener("change", applyFilters);
+    visibilitySel.addEventListener("change", applyFilters);
+
+    init();
+  </script>
+</body>
+</html>
