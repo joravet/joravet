@@ -1,4 +1,4 @@
-# What's up everbody, I am Jackson Oravetz 👋
+# Hi there, I am Jackson Oravetz 👋
 
 ## 🚀About Me:
 - 🎓 Computer Science and Engineering Student (University of Toledo)
